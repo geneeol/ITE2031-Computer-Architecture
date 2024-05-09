@@ -8,10 +8,17 @@
 
 // TODO: zero register 값 고정!
 // TODO: 우분투에서 돌려보기
+// TODO: pc 범위 제한?
 
 // my code
-#define MAX_LABEL_LENGTH 1000
+#define MAX_LABEL_LENGTH 6
 #define INITIAL_LABEL_SIZE 10
+#define INT_MAX 2147483647
+#define INT_MIN -2147483648
+#define MAX_OFFSET 32767
+#define MIN_OFFSET -32768
+#define MIN_REG 0
+#define MAX_REG 7
 typedef struct label
 {
 	char name[MAX_LABEL_LENGTH];
@@ -316,14 +323,13 @@ int is_int(char *str)
 {
 	char str2[100];
 
+	// atoi overflow 나면?
 	sprintf(str2, "%d", atoi(str));
 	return strcmp(str, str2) == 0;
 }
 
-int in_range(char *str, int min, int max)
+int in_range(int num, int min, int max)
 {
-	int num = atoi(str);
-
 	return num >= min && num <= max;
 }
 
@@ -332,6 +338,11 @@ void init_labels_arr()
 	labels.size = 0;
 	labels.capacity = INITIAL_LABEL_SIZE;
 	labels.arr = (t_label *)malloc(sizeof(t_label) * labels.capacity);
+}
+
+int is_valid_label(char *str)
+{
+	return strlen(str) <= MAX_LABEL_LENGTH && !isNumber(str);
 }
 
 int duplicated_label(char *name)
@@ -382,4 +393,88 @@ int get_opcode(char *opcode)
 			return i;
 	}
 	return -1;
+}
+
+int is_valid_reg(char *str)
+{
+	return (strlen(str) != 0 && is_int(str)
+			&& in_range(atoi(str), MIN_REG, MAX_REG));
+}
+
+// int is_valid_label(char *str)
+// {
+// }
+
+int is_valid_offset(char *str)
+{
+	int offest;
+
+	if (!is_int(str))
+	{
+		if (get_label_addr(str) < 0)
+			return 0;
+	}
+	else
+	{
+		if (!in_range(atoi(str), MIN_OFFSET, MAX_OFFSET))
+			return 0;
+	}
+	return 1;
+}
+
+int rtype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2)
+{
+	// TODO: dest에 제로레지스터 괜찮은지 검증
+	if (!is_valid_reg(arg0) || !is_valid_reg(arg1) || !is_valid_reg(arg2))
+		return 0;
+	return 1;
+}
+
+int itype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2)
+{
+	int offset;
+
+	if (!is_valid_reg(arg0) || !is_valid_reg(arg1))
+		return 0;
+	if (!is_valid_offset(arg2))
+		return 0;
+	return 1;
+}
+
+int jtype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2)
+{
+	if (!is_valid_reg(arg0) || !is_valid_reg(arg1))
+		return 0;
+	return 1;
+}
+
+int otype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2)
+{
+	return 1;
+}
+
+int directive_validator(char *label, char *opcode, char *arg0,
+						char *arg1, char *arg2)
+{
+	if (!is_valid_label(label))
+		return 0;
+
+	// 여기서 오버플로우 검사되는듯?
+	// TODO: 큰 값 테스트 해보기
+	if (!is_int(arg0))
+	{
+		if (get_label_addr(arg0) < 0)
+			return 0;
+	}
+	else
+	{
+		if (!in_range(atoi(arg0), INT_MAX, INT_MIN))
+			return 0;
+	}
+	
+	return 1;
 }
