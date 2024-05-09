@@ -19,9 +19,31 @@
 #define MIN_OFFSET -32768
 #define MIN_REG 0
 #define MAX_REG 7
+
+// my function
+void init_labels_arr();
+int duplicated_label(char *name);
+void add_label(char *name, int addr);
+void print_labels();
+int get_opcode(char *opcode);
+int is_int(char *str);
+int in_range(int num, int min, int max);
+int is_valid_label(char *str);
+int get_label_addr(char *name);
+int rtype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2);
+int itype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2);
+int jtype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2);
+int otype_validator(char *label, char *opcode, char *arg0,
+					char *arg1, char *arg2);
+int directive_validator(char *label, char *opcode, char *arg0,
+						char *arg1, char *arg2);
+
 typedef struct label
 {
-	char name[MAX_LABEL_LENGTH];
+	char name[MAX_LABEL_LENGTH + 1];
 	int addr;
 } t_label;
 
@@ -49,8 +71,8 @@ t_validator validator_tabel[] = {
 	rtype_validator, rtype_validator,
 	itype_validator, itype_validator, itype_validator,
 	jtype_validator,
-	otype_validator, otype_validator
-
+	otype_validator, otype_validator,
+	directive_validator
 };
 
 enum
@@ -80,22 +102,10 @@ enum
 // (<white> means a series of tabs and/or spaces)
 // unused fileds should be ignored
 
-int rtype_validator(char *label, char *opcode, char *arg0,
-					char *arg1, char *arg2);
-int itype_validator(char *label, char *opcode, char *arg0,
-					char *arg1, char *arg2);
-int jtype_validator(char *label, char *opcode, char *arg0,
-					char *arg1, char *arg2);
-int otype_validator(char *label, char *opcode, char *arg0,
-					char *arg1, char *arg2);
-int directive_validator(char *label, char *opcode, char *arg0,
-						char *arg1, char *arg2);
 int readAndParse(FILE *, char *, char *, char *, char *, char *);
 int isNumber(char *);
-void init_labels_arr();
-int duplicated_label(char *name);
-void add_label(char *name, int addr);
-void print_labels();
+
+
 
 int main(int argc, char *argv[]) 
 {
@@ -108,6 +118,9 @@ int main(int argc, char *argv[])
 	int opcode_bit;
 	int machine_code = 0;
 	int offset;
+	int dest;
+	short offest_16bit;
+	char tmpstr[1000];
 
 	if (argc != 3) {
 		printf("error: usage: %s <assembly-code-file> <machine-code-file>\n",
@@ -132,21 +145,16 @@ int main(int argc, char *argv[])
 	/* here is an example for how to use readAndParse to read a line from
 		 inFilePtr */
 
-	// if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)) {
-	// 	/* reached end of file */
-	// }
-
 	init_labels_arr();
 	while (readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2))
 	{
-		printf("label: %s, opcode: %s, arg0: %s, arg1: %s, arg2: %s\n", label, opcode, arg0, arg1, arg2);
+		// printf("label: %s, opcode: %s, arg0: %s, arg1: %s, arg2: %s\n", label, opcode, arg0, arg1, arg2);
 		pc++;
 
 		if (strlen(label) == 0)
 			continue ;
 
-		// TODO: print addr
-		if (isNumber(label) || strlen(label) > 6)
+		if (!is_valid_label(label))
 		{
 			printf("error in line %d: label is invalid\n", pc + 1);
 			exit(1);
@@ -159,7 +167,7 @@ int main(int argc, char *argv[])
 		}
 		add_label(label, pc);
 	}
-	print_labels();
+	// print_labels();
 
 
 
@@ -179,79 +187,70 @@ int main(int argc, char *argv[])
 	{
 		pc++;
 		opcode_bit = get_opcode(opcode);
+
 		if (opcode_bit < 0)
 		{
 			printf("error in line %d: opcode is invalid\n", pc + 1);
 			exit(1);
 		}
+
 		if (!validator_tabel[opcode_bit](label, opcode, arg0, arg1, arg2))
 		{
-			printf("error in line %d: validator is invalid\n", pc + 1);
+			printf("error in line %d: invalid input\n", pc + 1);
 			exit(1);
 		}
-	// 	switch(opcode_bit)
-	// 	{
-	// 		// check register number range, zero register
-	// 		case ADD:
-	// 		case NOR:
-	// 			// if (strlen(arg0) == 0 || strlen(arg1) == 0 || strlen(arg2) == 0
-	// 			// 	|| is_int(arg0) || is_int(arg1) || is_int(arg2))
-	// 			// {
-	// 			// 	printf("error in line %d: register number is invalid\n", pc + 1);
-	// 			// 	exit(1);
-	// 			// }
-	// 			// if (!in_range(arg0, 0, 7) || !in_range(arg1, 0, 7) || !in_range(arg2, 0, 7))
-	// 			// {
-	// 			// 	printf("error in line %d: register number is invalid\n", pc + 1);
-	// 			// 	exit(1);
-	// 			// }
-	// 			// machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | atoi(arg2);
-	// 		case LW:
-	// 		case SW:
-	// 			// if (strlen(arg0) == 0 || strlen(arg1) == 0 || strlen(arg2) == 0)
-	// 			// {
-	// 			// 	printf("error in line %d: arg is invalid\n", pc + 1);
-	// 			// 	exit(1);
-	// 			// }
-	// 			// if (in_range(arg0, 0, 7) || in_range(arg1, 0, 7))
-	// 			// {
-	// 			// 	printf("error in line %d: register number is invalid\n", pc + 1);
-	// 			// 	exit(1);
-	// 			// }
-	// 			// if (!is_int(arg2))
-	// 			// {
-	// 			// 	offset = get_label_addr(arg2);
-	// 			// 	if (offset < 0)
-	// 			// 	{
-	// 			// 		printf("error in line %d: label is undefined\n", pc + 1);
-	// 			// 		exit(1);
-	// 			// 	}
-	// 			// }
-	// 			// else
-	// 			// {
-	// 			// 	offset = atoi(arg2);
-	// 			// }
 
-	// 			// break ;
-	// 		case BEQ:
-	// 			break ;
-	// 		case JALR:
-	// 			break ;
-	// 		case HALT:
-	// 		case NOOP:
-	// 			break ;
-	// 		case FILL:
-	// 			break ;
-	// 		default:
-	// 			printf("error in line %d: opcode is invalid\n", pc + 1);
-	// 			exit(1);
-	// 	}
-
-	// }
-
-
-	if (!strcmp(opcode, "add")) {
-		/* do whatever you need to do for opcode "add" */
+		switch(opcode_bit)
+		{
+			case ADD:
+			case NOR:
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | atoi(arg2);
+				break ;
+			case LW:
+			case SW:
+				offset = is_int(arg2) ? atoi(arg2) : get_label_addr(arg2);
+				// TODO: 음수 처리 주의
+				// TODO: 비트표현 검증하기 음수 주의
+				// sign extension 될 것 같네
+				offest_16bit = offset;
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offest_16bit;
+				break ;
+			case BEQ:
+				// offset = is_int(arg2) ? atoi(arg2) : get_label_addr(arg2);
+				if (is_int(arg2))
+				{
+					offset = atoi(arg2);
+				}
+				else
+				{
+					dest = get_label_addr(arg2);
+					offset = dest - pc - 1;
+					if (!in_range(offset, MIN_OFFSET, MAX_OFFSET))
+					{
+						printf("error in line %d: offset is out of range\n", pc + 1);
+						exit(1);
+					}
+				}
+				printf("offset: %d\n", offset);
+				// offest_16bit = offset;
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offset & 0xFFFF;
+				break ;
+			case JALR:
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16;
+				break ;
+			case HALT:
+			case NOOP:
+				machine_code = opcode_bit << 22;
+				break ;
+			case FILL:
+				machine_code = is_int(arg0) ? atoi(arg0) : get_label_addr(arg0);
+				break ;
+			default:
+				printf("error in line %d: opcode is invalid\n", pc + 1);
+				exit(1);
+		}
+		fprintf(outFilePtr, "%d\n", machine_code);
+		printf("(address %d): %d (hex 0x%x)\n", pc, machine_code, machine_code);
 	}
 
 	if (inFilePtr) {
@@ -390,7 +389,9 @@ int get_opcode(char *opcode)
 	for (int i = 0; i < sizeof(instruction_tabel) / sizeof(char *); i++)
 	{
 		if (strcmp(opcode, instruction_tabel[i]) == 0)
+		{
 			return i;
+		}
 	}
 	return -1;
 }
@@ -472,7 +473,7 @@ int directive_validator(char *label, char *opcode, char *arg0,
 	}
 	else
 	{
-		if (!in_range(atoi(arg0), INT_MAX, INT_MIN))
+		if (!in_range(atoi(arg0), INT_MIN, INT_MAX))
 			return 0;
 	}
 	
