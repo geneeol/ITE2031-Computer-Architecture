@@ -105,6 +105,8 @@ int main(int argc, char *argv[])
             case HALT:
                 printf("machine halted\n");
                 goto end;
+            case NOOP:
+                break ;
         }
     }
 end:
