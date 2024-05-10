@@ -101,11 +101,8 @@ enum
 // label<white>instruction<white>fld0<white>fld1<white>fld2<white>comments
 // (<white> means a series of tabs and/or spaces)
 // unused fileds should be ignored
-
 int readAndParse(FILE *, char *, char *, char *, char *, char *);
 int isNumber(char *);
-
-
 
 int main(int argc, char *argv[]) 
 {
@@ -119,8 +116,6 @@ int main(int argc, char *argv[])
 	int machine_code = 0;
 	int offset;
 	int dest;
-	short offest_16bit;
-	char tmpstr[1000];
 
 	if (argc != 3) {
 		printf("error: usage: %s <assembly-code-file> <machine-code-file>\n",
@@ -144,11 +139,9 @@ int main(int argc, char *argv[])
 
 	/* here is an example for how to use readAndParse to read a line from
 		 inFilePtr */
-
 	init_labels_arr();
 	while (readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2))
 	{
-		// printf("label: %s, opcode: %s, arg0: %s, arg1: %s, arg2: %s\n", label, opcode, arg0, arg1, arg2);
 		pc++;
 
 		if (strlen(label) == 0)
@@ -165,11 +158,9 @@ int main(int argc, char *argv[])
 			printf("error in line %d: label is duplicated\n", pc + 1);
 			exit(1);
 		}
+
 		add_label(label, pc);
 	}
-	// print_labels();
-
-
 
 	/* TODO: Phase-1 label calculation */
 
@@ -209,14 +200,15 @@ int main(int argc, char *argv[])
 			case LW:
 			case SW:
 				offset = is_int(arg2) ? atoi(arg2) : get_label_addr(arg2);
-				// TODO: 음수 처리 주의
-				// TODO: 비트표현 검증하기 음수 주의
-				// sign extension 될 것 같네
-				offest_16bit = offset;
-				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offest_16bit;
+				// offset 범위가 16비트로 표현가능하면 0xffff랑 마스킹해서 하위 16비트 구해도 됨
+				if (!in_range(offset, MIN_OFFSET, MAX_OFFSET))
+				{
+					printf("error in line %d: offset is out of range\n", pc + 1);
+					exit(1);
+				}
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offset & 0xffff;
 				break ;
 			case BEQ:
-				// offset = is_int(arg2) ? atoi(arg2) : get_label_addr(arg2);
 				if (is_int(arg2))
 				{
 					offset = atoi(arg2);
@@ -231,9 +223,7 @@ int main(int argc, char *argv[])
 						exit(1);
 					}
 				}
-				printf("offset: %d\n", offset);
-				// offest_16bit = offset;
-				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offset & 0xFFFF;
+				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16 | offset & 0xffff;
 				break ;
 			case JALR:
 				machine_code = opcode_bit << 22 | atoi(arg0) << 19 | atoi(arg1) << 16;
@@ -322,7 +312,7 @@ int is_int(char *str)
 {
 	char str2[100];
 
-	// atoi overflow 나면?
+	// TODO: atoi overflow 나면?, 밑에서 str이랑 str2가 무조건 다름. 테케
 	sprintf(str2, "%d", atoi(str));
 	return strcmp(str, str2) == 0;
 }
@@ -402,16 +392,15 @@ int is_valid_reg(char *str)
 			&& in_range(atoi(str), MIN_REG, MAX_REG));
 }
 
-// int is_valid_label(char *str)
-// {
-// }
-
 int is_valid_offset(char *str)
 {
 	int offest;
 
 	if (!is_int(str))
 	{
+		// TODO: label addr과 오프셋 범위? 에러 체킹 필요?
+		// 만약 get_label_addr 범위가 오프셋 범위 벗어나면?
+		// label을 주소로 변환한 후의 offset 범위는 따로 체크하는게 맞는듯?
 		if (get_label_addr(str) < 0)
 			return 0;
 	}
@@ -465,7 +454,7 @@ int directive_validator(char *label, char *opcode, char *arg0,
 		return 0;
 
 	// 여기서 오버플로우 검사되는듯?
-	// TODO: 큰 값 테스트 해보기
+	// TODO: 큰 값 테스트 해보기, intmax, intmin 벗어나는 값
 	if (!is_int(arg0))
 	{
 		if (get_label_addr(arg0) < 0)
