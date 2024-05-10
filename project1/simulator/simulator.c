@@ -14,6 +14,16 @@ typedef struct stateStruct {
     int numMemory;
 } stateType;
 
+enum
+{
+	ADD = 0, NOR,
+	LW, SW, BEQ,
+	JALR,
+	HALT, NOOP,
+	FILL
+};
+
+void init_state(stateType *);
 void printState(stateType *);
 int convertNum(int num);
 
@@ -22,6 +32,11 @@ int main(int argc, char *argv[])
     char line[MAXLINELENGTH];
     stateType state;
     FILE *filePtr;
+
+    // my code
+    int instr;
+    int n_instr = 0;
+    int opcode, reg_a, reg_b, dest_reg, offset;
 
     if (argc != 2) {
         printf("error: usage: %s <machine-code file>\n", argv[0]);
@@ -46,8 +61,66 @@ int main(int argc, char *argv[])
         printf("memory[%d]=%d\n", state.numMemory, state.mem[state.numMemory]);
     }
 
-		/* TODO: */
+	/* TODO: */
+
+    init_state(&state);
+
+    while (state.pc < state.numMemory)
+    {
+        printState(&state);
+        n_instr++;
+        instr = state.mem[state.pc];
+        opcode = instr >> 22 & 0x7;
+        reg_a = instr >> 19 & 0x7;
+        reg_b = instr >> 16 & 0x7;
+
+        state.pc++;
+        switch (opcode)
+        {
+            case ADD:
+                dest_reg = instr & 0x7;
+                state.reg[dest_reg] = state.reg[reg_a] + state.reg[reg_b];
+                break ;
+            case NOR:
+                dest_reg = instr & 0x7;
+                state.reg[dest_reg] = ~(state.reg[reg_a] | state.reg[reg_b]);
+                break ;
+            case LW:
+                offset = convertNum(instr & 0xffff);
+                state.reg[reg_b] = state.mem[state.reg[reg_a] + offset];
+                break ;
+            case SW:
+                offset = convertNum(instr & 0xffff);
+                state.mem[state.reg[reg_a] + offset] = state.reg[reg_b];
+                break ;
+            case BEQ:
+                offset = convertNum(instr & 0xffff);
+                if (state.reg[reg_a] == state.reg[reg_b])
+                    state.pc += offset;
+                break ;
+            case JALR:
+                state.reg[reg_b] = state.pc;
+                state.pc = state.reg[reg_a];
+                break ;
+            case HALT:
+                printf("machine halted\n");
+                goto end;
+        }
+    }
+end:
+    printf("total of %d instructions executed\n", n_instr);
+    printf("final state of machine:\n");
+    printState(&state);
     return(0);
+}
+
+void init_state(stateType *statePtr)
+{
+    statePtr->pc = 0;
+    int i;
+    for (i = 0; i < NUMREGS; i++) {
+        statePtr->reg[i] = 0;
+    }
 }
 
 void printState(stateType *statePtr)
