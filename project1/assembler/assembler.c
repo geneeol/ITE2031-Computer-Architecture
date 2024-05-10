@@ -6,7 +6,6 @@
 
 #define MAXLINELENGTH 1000
 
-// TODO: zero register 값 고정!
 // TODO: 우분투에서 돌려보기
 // TODO: pc 범위 제한?
 
@@ -93,9 +92,6 @@ enum
 // 31-25 not used, should be 0
 // 24-22 opcode
 // more details in handout page2
-
-// TODO: label 이름 다양하게 테스트, label 개수 많이 넣기
-// TODO: beq에 same register
 
 // assembly code format
 // label<white>instruction<white>fld0<white>fld1<white>fld2<white>comments
@@ -240,7 +236,7 @@ int main(int argc, char *argv[])
 				exit(1);
 		}
 		fprintf(outFilePtr, "%d\n", machine_code);
-		printf("(address %d): %d (hex 0x%x)\n", pc, machine_code, machine_code);
+		// printf("(address %d): %d (hex 0x%x)\n", pc, machine_code, machine_code);
 	}
 
 	if (inFilePtr) {
@@ -312,7 +308,6 @@ int is_int(char *str)
 {
 	char str2[100];
 
-	// TODO: atoi overflow 나면?, 밑에서 str이랑 str2가 무조건 다름. 테케
 	sprintf(str2, "%d", atoi(str));
 	return strcmp(str, str2) == 0;
 }
@@ -398,9 +393,6 @@ int is_valid_offset(char *str)
 
 	if (!is_int(str))
 	{
-		// TODO: label addr과 오프셋 범위? 에러 체킹 필요?
-		// 만약 get_label_addr 범위가 오프셋 범위 벗어나면?
-		// label을 주소로 변환한 후의 offset 범위는 따로 체크하는게 맞는듯?
 		if (get_label_addr(str) < 0)
 			return 0;
 	}
@@ -415,7 +407,6 @@ int is_valid_offset(char *str)
 int rtype_validator(char *label, char *opcode, char *arg0,
 					char *arg1, char *arg2)
 {
-	// TODO: dest에 제로레지스터 괜찮은지 검증
 	if (!is_valid_reg(arg0) || !is_valid_reg(arg1) || !is_valid_reg(arg2))
 		return 0;
 	return 1;
@@ -453,8 +444,6 @@ int directive_validator(char *label, char *opcode, char *arg0,
 	if (!is_valid_label(label))
 		return 0;
 
-	// 여기서 오버플로우 검사되는듯?
-	// TODO: 큰 값 테스트 해보기, intmax, intmin 벗어나는 값
 	if (!is_int(arg0))
 	{
 		if (get_label_addr(arg0) < 0)
