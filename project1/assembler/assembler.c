@@ -6,9 +6,6 @@
 
 #define MAXLINELENGTH 1000
 
-// TODO: 우분투에서 돌려보기
-// TODO: pc 범위 제한?
-
 // my code
 #define MAX_LABEL_LENGTH 6
 #define INITIAL_LABEL_SIZE 10
